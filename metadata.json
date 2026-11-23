@@ -1,0 +1,6 @@
+{
+  "name": "NextBlock",
+  "description": "Hyperlocal neighborhood community network with feeds, safety alerts, marketplace, local recommendations, events, groups, and neighbor messaging.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

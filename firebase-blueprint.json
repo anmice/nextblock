@@ -1,0 +1,418 @@
+{
+  "entities": {
+    "NeighborProfile": {
+      "title": "NeighborProfile",
+      "description": "Public non-PII profile for a verified neighbor.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the neighbor." },
+        "displayName": { "type": "string", "description": "Display name shown on posts and directory." },
+        "neighborhoodId": { "type": "string", "description": "Slug ID of the neighbor's primary neighborhood." },
+        "neighborhoodName": { "type": "string", "description": "Human-readable name of the primary neighborhood." },
+        "bio": { "type": "string", "description": "Short neighbor introduction bio." },
+        "avatarInitials": { "type": "string", "description": "1-2 character initials for fallback avatar." },
+        "avatarColorHex": { "type": "integer", "description": "ARGB color integer for avatar badge." },
+        "interests": { "type": "array", "description": "Up to 10 neighborhood interest tags." },
+        "helpfulCount": { "type": "integer", "description": "Count of helpful thanks received." },
+        "publicProfile": { "type": "boolean", "description": "Visibility marker for neighborhood directory queries." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "neighborhoodId",
+        "neighborhoodName",
+        "bio",
+        "avatarInitials",
+        "avatarColorHex",
+        "interests",
+        "helpfulCount",
+        "publicProfile",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "NeighborPrivateSettings": {
+      "title": "NeighborPrivateSettings",
+      "description": "Private PII and preferences strictly isolated to the owning user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "streetName": { "type": "string" },
+        "radiusMiles": { "type": "integer" },
+        "savedPostIds": { "type": "array" },
+        "savedListingIds": { "type": "array" },
+        "alertsEnabled": { "type": "boolean" },
+        "digestEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "email",
+        "streetName",
+        "radiusMiles",
+        "savedPostIds",
+        "savedListingIds",
+        "alertsEnabled",
+        "digestEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "NeighborNotification": {
+      "title": "NeighborNotification",
+      "description": "Per-user activity and reminder notification item.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "category": { "type": "string", "enum": ["COMMENT", "THANK", "MESSAGE", "SAFETY", "EVENT"] },
+        "targetId": { "type": "string" },
+        "readFlag": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "body", "category", "targetId", "readFlag", "createdAt"]
+    },
+    "NeighborhoodPost": {
+      "title": "NeighborhoodPost",
+      "description": "Community feed post across General, Crime & Safety, Recommendations, Lost & Found, Events, and Polls.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorInitials": { "type": "string" },
+        "authorAvatarColor": { "type": "integer" },
+        "neighborhoodId": { "type": "string" },
+        "neighborhoodName": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["NEIGHBORHOOD"] },
+        "scope": { "type": "string", "enum": ["LOCAL", "NEARBY"] },
+        "category": { "type": "string", "enum": ["GENERAL", "SAFETY", "RECOMMENDATION", "LOST_FOUND", "EVENT", "POLL"] },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "locationTag": { "type": "string" },
+        "photoUri": { "type": "string" },
+        "pollOptions": { "type": "array" },
+        "pollVotes": { "type": "array" },
+        "thanksCount": { "type": "integer" },
+        "commentsCount": { "type": "integer" },
+        "pinnedUrgent": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "authorId",
+        "authorName",
+        "authorInitials",
+        "authorAvatarColor",
+        "neighborhoodId",
+        "neighborhoodName",
+        "visibility",
+        "scope",
+        "category",
+        "title",
+        "body",
+        "locationTag",
+        "pollOptions",
+        "pollVotes",
+        "thanksCount",
+        "commentsCount",
+        "pinnedUrgent",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PostComment": {
+      "title": "PostComment",
+      "description": "Comment on a neighborhood post.",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorInitials": { "type": "string" },
+        "authorAvatarColor": { "type": "integer" },
+        "neighborhoodName": { "type": "string" },
+        "body": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["NEIGHBORHOOD"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "postId",
+        "authorId",
+        "authorName",
+        "authorInitials",
+        "authorAvatarColor",
+        "neighborhoodName",
+        "body",
+        "visibility",
+        "createdAt"
+      ]
+    },
+    "UserReactionMarker": {
+      "title": "UserReactionMarker",
+      "description": "Per-user marker document for thanks, RSVPs, memberships, and business faves.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "targetId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "targetId", "createdAt"]
+    },
+    "MarketplaceListing": {
+      "title": "MarketplaceListing",
+      "description": "For Sale & Free neighborhood marketplace item.",
+      "type": "object",
+      "properties": {
+        "sellerId": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "sellerInitials": { "type": "string" },
+        "sellerAvatarColor": { "type": "integer" },
+        "neighborhoodId": { "type": "string" },
+        "neighborhoodName": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["NEIGHBORHOOD"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "priceDollars": { "type": "integer" },
+        "category": { "type": "string", "enum": ["FREE", "FURNITURE", "ELECTRONICS", "GARDEN", "KIDS", "TOOLS", "OTHER"] },
+        "condition": { "type": "string", "enum": ["NEW", "LIKE_NEW", "GOOD", "FAIR"] },
+        "status": { "type": "string", "enum": ["AVAILABLE", "PENDING", "SOLD"] },
+        "photoUri": { "type": "string" },
+        "pickupArea": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "sellerId",
+        "sellerName",
+        "sellerInitials",
+        "sellerAvatarColor",
+        "neighborhoodId",
+        "neighborhoodName",
+        "visibility",
+        "title",
+        "description",
+        "priceDollars",
+        "category",
+        "condition",
+        "status",
+        "pickupArea",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "NeighborhoodEvent": {
+      "title": "NeighborhoodEvent",
+      "description": "Local neighborhood event with RSVP count.",
+      "type": "object",
+      "properties": {
+        "organizerId": { "type": "string" },
+        "organizerName": { "type": "string" },
+        "neighborhoodId": { "type": "string" },
+        "neighborhoodName": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["NEIGHBORHOOD"] },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string", "enum": ["BLOCK_PARTY", "GARAGE_SALE", "CLEANUP", "MARKET", "WORKSHOP"] },
+        "dateLabel": { "type": "string" },
+        "timeLabel": { "type": "string" },
+        "locationLabel": { "type": "string" },
+        "rsvpCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "organizerId",
+        "organizerName",
+        "neighborhoodId",
+        "neighborhoodName",
+        "visibility",
+        "title",
+        "description",
+        "category",
+        "dateLabel",
+        "timeLabel",
+        "locationLabel",
+        "rsvpCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "NeighborhoodGroup": {
+      "title": "NeighborhoodGroup",
+      "description": "Local interest group within a neighborhood.",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "neighborhoodId": { "type": "string" },
+        "neighborhoodName": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["NEIGHBORHOOD"] },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string", "enum": ["GARDENING", "PETS", "SAFETY", "PARENTS", "BUY_NOTHING", "FITNESS"] },
+        "memberCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "creatorId",
+        "creatorName",
+        "neighborhoodId",
+        "neighborhoodName",
+        "visibility",
+        "name",
+        "description",
+        "category",
+        "memberCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LocalBusiness": {
+      "title": "LocalBusiness",
+      "description": "Neighbor-recommended local business or service provider.",
+      "type": "object",
+      "properties": {
+        "recommenderId": { "type": "string" },
+        "recommenderName": { "type": "string" },
+        "neighborhoodId": { "type": "string" },
+        "neighborhoodName": { "type": "string" },
+        "visibility": { "type": "string", "enum": ["NEIGHBORHOOD"] },
+        "name": { "type": "string" },
+        "category": { "type": "string", "enum": ["HOME_SERVICES", "CAFE_FOOD", "PETS", "HEALTH", "AUTO", "LANDSCAPING"] },
+        "summary": { "type": "string" },
+        "addressLabel": { "type": "string" },
+        "phoneLabel": { "type": "string" },
+        "favesCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "recommenderId",
+        "recommenderName",
+        "neighborhoodId",
+        "neighborhoodName",
+        "visibility",
+        "name",
+        "category",
+        "summary",
+        "addressLabel",
+        "phoneLabel",
+        "favesCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DirectConversation": {
+      "title": "DirectConversation",
+      "description": "1-on-1 direct message thread between two neighbors.",
+      "type": "object",
+      "properties": {
+        "participantUids": { "type": "array" },
+        "participantNames": { "type": "array" },
+        "subject": { "type": "string" },
+        "lastMessageText": { "type": "string" },
+        "lastSenderId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "participantUids",
+        "participantNames",
+        "subject",
+        "lastMessageText",
+        "lastSenderId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DirectMessage": {
+      "title": "DirectMessage",
+      "description": "Individual chat message in a direct conversation.",
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "participantUids": { "type": "array" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "conversationId",
+        "senderId",
+        "senderName",
+        "participantUids",
+        "text",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/NeighborProfile" },
+      "description": "Public non-PII neighbor profiles."
+    },
+    "/users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/NeighborPrivateSettings" },
+      "description": "Owner-only PII and neighborhood preferences."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NeighborNotification" },
+      "description": "Owner-only notification items."
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/NeighborhoodPost" },
+      "description": "Neighborhood feed posts."
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/PostComment" },
+      "description": "Comments on a post."
+    },
+    "/posts/{postId}/thanks/{userId}": {
+      "schema": { "$ref": "#/entities/UserReactionMarker" },
+      "description": "Per-user thank marker on a post."
+    },
+    "/listings/{listingId}": {
+      "schema": { "$ref": "#/entities/MarketplaceListing" },
+      "description": "For Sale & Free marketplace listings."
+    },
+    "/events/{eventId}": {
+      "schema": { "$ref": "#/entities/NeighborhoodEvent" },
+      "description": "Neighborhood events."
+    },
+    "/events/{eventId}/rsvps/{userId}": {
+      "schema": { "$ref": "#/entities/UserReactionMarker" },
+      "description": "Per-user RSVP marker on an event."
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/NeighborhoodGroup" },
+      "description": "Neighborhood interest groups."
+    },
+    "/groups/{groupId}/members/{userId}": {
+      "schema": { "$ref": "#/entities/UserReactionMarker" },
+      "description": "Per-user membership marker in a group."
+    },
+    "/businesses/{businessId}": {
+      "schema": { "$ref": "#/entities/LocalBusiness" },
+      "description": "Neighbor-recommended local businesses."
+    },
+    "/businesses/{businessId}/faves/{userId}": {
+      "schema": { "$ref": "#/entities/UserReactionMarker" },
+      "description": "Per-user fave marker on a business."
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/DirectConversation" },
+      "description": "1-on-1 direct message threads."
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/DirectMessage" },
+      "description": "Individual messages inside a conversation."
+    }
+  }
+}

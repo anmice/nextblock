@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">NextBlock</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_discover">Discover</string>
+    <string name="nav_market">For Sale</string>
+    <string name="nav_safety">Safety</string>
+    <string name="nav_messages">Messages</string>
+    <string name="nav_profile">Profile</string>
+</resources>

@@ -1,0 +1,550 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // --- Entity Validation Blueprints ---
+
+    function isValidNeighborProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 60 &&
+             data.neighborhoodId is string && data.neighborhoodId.size() >= 1 && data.neighborhoodId.size() <= 64 &&
+             data.neighborhoodName is string && data.neighborhoodName.size() >= 1 && data.neighborhoodName.size() <= 80 &&
+             data.bio is string && data.bio.size() <= 240 &&
+             data.avatarInitials is string && data.avatarInitials.size() >= 1 && data.avatarInitials.size() <= 4 &&
+             data.avatarColorHex is int &&
+             data.interests is list && data.interests.size() <= 10 &&
+             (data.interests.size() == 0 || data.interests[0] is string) &&
+             data.helpfulCount is int && data.helpfulCount >= 0 &&
+             data.publicProfile is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPrivateSettings(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.email is string && data.email.size() <= 120 &&
+             data.streetName is string && data.streetName.size() <= 100 &&
+             data.radiusMiles is int && data.radiusMiles >= 1 && data.radiusMiles <= 25 &&
+             data.savedPostIds is list && data.savedPostIds.size() <= 100 &&
+             (data.savedPostIds.size() == 0 || data.savedPostIds[0] is string) &&
+             data.savedListingIds is list && data.savedListingIds.size() <= 100 &&
+             (data.savedListingIds.size() == 0 || data.savedListingIds[0] is string) &&
+             data.alertsEnabled is bool &&
+             data.digestEnabled is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidNotification(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 300 &&
+             data.category in ['COMMENT', 'THANK', 'MESSAGE', 'SAFETY', 'EVENT'] &&
+             data.targetId is string && data.targetId.size() <= 128 &&
+             data.readFlag is bool &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidNeighborhoodPost(data) {
+      return data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+             data.authorInitials is string && data.authorInitials.size() >= 1 && data.authorInitials.size() <= 4 &&
+             data.authorAvatarColor is int &&
+             data.neighborhoodId is string && data.neighborhoodId.size() >= 1 && data.neighborhoodId.size() <= 64 &&
+             data.neighborhoodName is string && data.neighborhoodName.size() >= 1 && data.neighborhoodName.size() <= 80 &&
+             data.visibility == 'NEIGHBORHOOD' &&
+             data.scope in ['LOCAL', 'NEARBY'] &&
+             data.category in ['GENERAL', 'SAFETY', 'RECOMMENDATION', 'LOST_FOUND', 'EVENT', 'POLL'] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 2000 &&
+             data.locationTag is string && data.locationTag.size() <= 100 &&
+             (!('photoUri' in data) || (data.photoUri is string && data.photoUri.size() <= 500)) &&
+             data.pollOptions is list && data.pollOptions.size() <= 4 &&
+             (data.pollOptions.size() == 0 || data.pollOptions[0] is string) &&
+             data.pollVotes is list && data.pollVotes.size() <= 4 &&
+             (data.pollVotes.size() == 0 || data.pollVotes[0] is int) &&
+             data.thanksCount is int && data.thanksCount >= 0 &&
+             data.commentsCount is int && data.commentsCount >= 0 &&
+             data.pinnedUrgent is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPostComment(data) {
+      return data.postId is string && data.postId.size() >= 1 && data.postId.size() <= 128 &&
+             data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+             data.authorInitials is string && data.authorInitials.size() >= 1 && data.authorInitials.size() <= 4 &&
+             data.authorAvatarColor is int &&
+             data.neighborhoodName is string && data.neighborhoodName.size() >= 1 && data.neighborhoodName.size() <= 80 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 1000 &&
+             data.visibility == 'NEIGHBORHOOD' &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidReactionMarker(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidListing(data) {
+      return data.sellerId is string && data.sellerId.size() >= 1 && data.sellerId.size() <= 128 &&
+             data.sellerName is string && data.sellerName.size() >= 1 && data.sellerName.size() <= 60 &&
+             data.sellerInitials is string && data.sellerInitials.size() >= 1 && data.sellerInitials.size() <= 4 &&
+             data.sellerAvatarColor is int &&
+             data.neighborhoodId is string && data.neighborhoodId.size() >= 1 && data.neighborhoodId.size() <= 64 &&
+             data.neighborhoodName is string && data.neighborhoodName.size() >= 1 && data.neighborhoodName.size() <= 80 &&
+             data.visibility == 'NEIGHBORHOOD' &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.description is string && data.description.size() >= 1 && data.description.size() <= 1500 &&
+             data.priceDollars is int && data.priceDollars >= 0 && data.priceDollars <= 100000 &&
+             data.category in ['FREE', 'FURNITURE', 'ELECTRONICS', 'GARDEN', 'KIDS', 'TOOLS', 'OTHER'] &&
+             data.condition in ['NEW', 'LIKE_NEW', 'GOOD', 'FAIR'] &&
+             data.status in ['AVAILABLE', 'PENDING', 'SOLD'] &&
+             (!('photoUri' in data) || (data.photoUri is string && data.photoUri.size() <= 500)) &&
+             data.pickupArea is string && data.pickupArea.size() <= 100 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidEvent(data) {
+      return data.organizerId is string && data.organizerId.size() >= 1 && data.organizerId.size() <= 128 &&
+             data.organizerName is string && data.organizerName.size() >= 1 && data.organizerName.size() <= 60 &&
+             data.neighborhoodId is string && data.neighborhoodId.size() >= 1 && data.neighborhoodId.size() <= 64 &&
+             data.neighborhoodName is string && data.neighborhoodName.size() >= 1 && data.neighborhoodName.size() <= 80 &&
+             data.visibility == 'NEIGHBORHOOD' &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.description is string && data.description.size() >= 1 && data.description.size() <= 1200 &&
+             data.category in ['BLOCK_PARTY', 'GARAGE_SALE', 'CLEANUP', 'MARKET', 'WORKSHOP'] &&
+             data.dateLabel is string && data.dateLabel.size() >= 1 && data.dateLabel.size() <= 60 &&
+             data.timeLabel is string && data.timeLabel.size() >= 1 && data.timeLabel.size() <= 40 &&
+             data.locationLabel is string && data.locationLabel.size() >= 1 && data.locationLabel.size() <= 120 &&
+             data.rsvpCount is int && data.rsvpCount >= 0 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidGroup(data) {
+      return data.creatorId is string && data.creatorId.size() >= 1 && data.creatorId.size() <= 128 &&
+             data.creatorName is string && data.creatorName.size() >= 1 && data.creatorName.size() <= 60 &&
+             data.neighborhoodId is string && data.neighborhoodId.size() >= 1 && data.neighborhoodId.size() <= 64 &&
+             data.neighborhoodName is string && data.neighborhoodName.size() >= 1 && data.neighborhoodName.size() <= 80 &&
+             data.visibility == 'NEIGHBORHOOD' &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+             data.description is string && data.description.size() >= 1 && data.description.size() <= 600 &&
+             data.category in ['GARDENING', 'PETS', 'SAFETY', 'PARENTS', 'BUY_NOTHING', 'FITNESS'] &&
+             data.memberCount is int && data.memberCount >= 0 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidBusiness(data) {
+      return data.recommenderId is string && data.recommenderId.size() >= 1 && data.recommenderId.size() <= 128 &&
+             data.recommenderName is string && data.recommenderName.size() >= 1 && data.recommenderName.size() <= 60 &&
+             data.neighborhoodId is string && data.neighborhoodId.size() >= 1 && data.neighborhoodId.size() <= 64 &&
+             data.neighborhoodName is string && data.neighborhoodName.size() >= 1 && data.neighborhoodName.size() <= 80 &&
+             data.visibility == 'NEIGHBORHOOD' &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.category in ['HOME_SERVICES', 'CAFE_FOOD', 'PETS', 'HEALTH', 'AUTO', 'LANDSCAPING'] &&
+             data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 500 &&
+             data.addressLabel is string && data.addressLabel.size() >= 1 && data.addressLabel.size() <= 120 &&
+             data.phoneLabel is string && data.phoneLabel.size() <= 40 &&
+             data.favesCount is int && data.favesCount >= 0 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidConversation(data) {
+      return data.participantUids is list && data.participantUids.size() == 2 &&
+             data.participantUids[0] is string && data.participantUids[1] is string &&
+             data.participantNames is list && data.participantNames.size() == 2 &&
+             data.participantNames[0] is string && data.participantNames[1] is string &&
+             data.subject is string && data.subject.size() <= 120 &&
+             data.lastMessageText is string && data.lastMessageText.size() <= 500 &&
+             data.lastSenderId is string && data.lastSenderId.size() <= 128 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidDirectMessage(data) {
+      return data.conversationId is string && data.conversationId.size() >= 1 && data.conversationId.size() <= 128 &&
+             data.senderId is string && data.senderId.size() >= 1 && data.senderId.size() <= 128 &&
+             data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 60 &&
+             data.participantUids is list && data.participantUids.size() == 2 &&
+             data.participantUids[0] is string && data.participantUids[1] is string &&
+             data.text is string && data.text.size() >= 1 && data.text.size() <= 1000 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn() && resource.data.publicProfile == true && resource.data.neighborhoodId is string;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'neighborhoodId', 'neighborhoodName', 'bio', 'avatarInitials', 'avatarColorHex', 'interests', 'helpfulCount', 'publicProfile', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'neighborhoodId', 'neighborhoodName', 'bio', 'avatarInitials', 'avatarColorHex', 'interests', 'helpfulCount', 'publicProfile', 'createdAt', 'updatedAt']) &&
+                       isValidNeighborProfile(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       isValidNeighborProfile(incoming()) &&
+                       request.auth.uid == userId &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().helpfulCount == existing().helpfulCount &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'neighborhoodId', 'neighborhoodName', 'bio', 'avatarInitials', 'avatarColorHex', 'interests', 'publicProfile', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+
+      match /private/{docId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(docId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(docId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'email', 'streetName', 'radiusMiles', 'savedPostIds', 'savedListingIds', 'alertsEnabled', 'digestEnabled', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'email', 'streetName', 'radiusMiles', 'savedPostIds', 'savedListingIds', 'alertsEnabled', 'digestEnabled', 'createdAt', 'updatedAt']) &&
+                         isValidPrivateSettings(incoming());
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(docId) &&
+                         request.auth.uid == userId &&
+                         isValidPrivateSettings(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['email', 'streetName', 'radiusMiles', 'savedPostIds', 'savedListingIds', 'alertsEnabled', 'digestEnabled', 'updatedAt']);
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(docId) && request.auth.uid == userId;
+      }
+
+      match /notifications/{notificationId} {
+        allow get: if isSignedIn() && isValidId(userId) && isValidId(notificationId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && request.auth.uid == userId;
+        allow create: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(notificationId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'title', 'body', 'category', 'targetId', 'readFlag', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'body', 'category', 'targetId', 'readFlag', 'createdAt']) &&
+                         isValidNotification(incoming());
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(notificationId) &&
+                         request.auth.uid == userId &&
+                         isValidNotification(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['readFlag']);
+        allow delete: if isSignedIn() && isValidId(userId) && isValidId(notificationId) && request.auth.uid == userId;
+      }
+    }
+
+    match /posts/{postId} {
+      allow get: if isSignedIn() && isValidId(postId);
+      allow list: if isSignedIn() && resource.data.visibility == 'NEIGHBORHOOD' && resource.data.neighborhoodId is string;
+
+      allow create: if isSignedIn() &&
+                       isValidId(postId) &&
+                       incoming().authorId == request.auth.uid &&
+                       incoming().thanksCount == 0 &&
+                       incoming().commentsCount == 0 &&
+                       incoming().keys().hasAll(['authorId', 'authorName', 'authorInitials', 'authorAvatarColor', 'neighborhoodId', 'neighborhoodName', 'visibility', 'scope', 'category', 'title', 'body', 'locationTag', 'pollOptions', 'pollVotes', 'thanksCount', 'commentsCount', 'pinnedUrgent', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['authorId', 'authorName', 'authorInitials', 'authorAvatarColor', 'neighborhoodId', 'neighborhoodName', 'visibility', 'scope', 'category', 'title', 'body', 'locationTag', 'photoUri', 'pollOptions', 'pollVotes', 'thanksCount', 'commentsCount', 'pinnedUrgent', 'createdAt', 'updatedAt']) &&
+                       isValidNeighborhoodPost(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(postId) &&
+                       isValidNeighborhoodPost(incoming()) &&
+                       incoming().authorId == existing().authorId &&
+                       incoming().createdAt == existing().createdAt && (
+                         // Action 1: Author edits post
+                         (existing().authorId == request.auth.uid &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'body', 'category', 'locationTag', 'photoUri', 'scope', 'pinnedUrgent', 'updatedAt'])) ||
+                         // Action 2: Neighbor toggles thank count atomically with /thanks/{uid}
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['thanksCount', 'updatedAt']) &&
+                          ((incoming().thanksCount == existing().thanksCount + 1 &&
+                            !exists(/databases/$(database)/documents/posts/$(postId)/thanks/$(request.auth.uid)) &&
+                            existsAfter(/databases/$(database)/documents/posts/$(postId)/thanks/$(request.auth.uid))) ||
+                           (incoming().thanksCount == existing().thanksCount - 1 &&
+                            exists(/databases/$(database)/documents/posts/$(postId)/thanks/$(request.auth.uid)) &&
+                            !existsAfter(/databases/$(database)/documents/posts/$(postId)/thanks/$(request.auth.uid))))) ||
+                         // Action 3: Neighbor increments/decrements commentsCount
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['commentsCount', 'updatedAt']) &&
+                          (incoming().commentsCount == existing().commentsCount + 1 || incoming().commentsCount == existing().commentsCount - 1)) ||
+                         // Action 4: Neighbor votes on poll
+                         (existing().category == 'POLL' &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['pollVotes', 'updatedAt']) &&
+                          incoming().pollVotes.size() == existing().pollVotes.size())
+                       );
+
+      allow delete: if isSignedIn() && isValidId(postId) && existing().authorId == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow get: if isSignedIn() && isValidId(postId) && isValidId(commentId);
+        allow list: if isSignedIn() && resource.data.visibility == 'NEIGHBORHOOD';
+        allow create: if isSignedIn() &&
+                         isValidId(postId) &&
+                         isValidId(commentId) &&
+                         incoming().authorId == request.auth.uid &&
+                         incoming().postId == postId &&
+                         incoming().keys().hasAll(['postId', 'authorId', 'authorName', 'authorInitials', 'authorAvatarColor', 'neighborhoodName', 'body', 'visibility', 'createdAt']) &&
+                         incoming().keys().hasOnly(['postId', 'authorId', 'authorName', 'authorInitials', 'authorAvatarColor', 'neighborhoodName', 'body', 'visibility', 'createdAt']) &&
+                         isValidPostComment(incoming()) &&
+                         existsAfter(/databases/$(database)/documents/posts/$(postId));
+        allow delete: if isSignedIn() && isValidId(postId) && isValidId(commentId) && existing().authorId == request.auth.uid;
+      }
+
+      match /thanks/{userId} {
+        allow get: if isSignedIn() && isValidId(postId) && isValidId(userId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() &&
+                         isValidId(postId) &&
+                         isValidId(userId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().targetId == postId &&
+                         incoming().keys().hasAll(['userId', 'targetId', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'targetId', 'createdAt']) &&
+                         isValidReactionMarker(incoming()) &&
+                         existsAfter(/databases/$(database)/documents/posts/$(postId));
+        allow delete: if isSignedIn() && isValidId(postId) && isValidId(userId) && request.auth.uid == userId;
+      }
+    }
+
+    match /listings/{listingId} {
+      allow get: if isSignedIn() && isValidId(listingId);
+      allow list: if isSignedIn() && resource.data.visibility == 'NEIGHBORHOOD' && resource.data.neighborhoodId is string;
+
+      allow create: if isSignedIn() &&
+                       isValidId(listingId) &&
+                       incoming().sellerId == request.auth.uid &&
+                       incoming().status == 'AVAILABLE' &&
+                       incoming().keys().hasAll(['sellerId', 'sellerName', 'sellerInitials', 'sellerAvatarColor', 'neighborhoodId', 'neighborhoodName', 'visibility', 'title', 'description', 'priceDollars', 'category', 'condition', 'status', 'pickupArea', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['sellerId', 'sellerName', 'sellerInitials', 'sellerAvatarColor', 'neighborhoodId', 'neighborhoodName', 'visibility', 'title', 'description', 'priceDollars', 'category', 'condition', 'status', 'photoUri', 'pickupArea', 'createdAt', 'updatedAt']) &&
+                       isValidListing(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(listingId) &&
+                       isValidListing(incoming()) &&
+                       existing().sellerId == request.auth.uid &&
+                       existing().status != 'SOLD' &&
+                       incoming().sellerId == existing().sellerId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'priceDollars', 'category', 'condition', 'status', 'photoUri', 'pickupArea', 'updatedAt']);
+
+      allow delete: if isSignedIn() && isValidId(listingId) && existing().sellerId == request.auth.uid;
+    }
+
+    match /events/{eventId} {
+      allow get: if isSignedIn() && isValidId(eventId);
+      allow list: if isSignedIn() && resource.data.visibility == 'NEIGHBORHOOD' && resource.data.neighborhoodId is string;
+
+      allow create: if isSignedIn() &&
+                       isValidId(eventId) &&
+                       incoming().organizerId == request.auth.uid &&
+                       incoming().rsvpCount >= 0 &&
+                       incoming().keys().hasAll(['organizerId', 'organizerName', 'neighborhoodId', 'neighborhoodName', 'visibility', 'title', 'description', 'category', 'dateLabel', 'timeLabel', 'locationLabel', 'rsvpCount', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['organizerId', 'organizerName', 'neighborhoodId', 'neighborhoodName', 'visibility', 'title', 'description', 'category', 'dateLabel', 'timeLabel', 'locationLabel', 'rsvpCount', 'createdAt', 'updatedAt']) &&
+                       isValidEvent(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(eventId) &&
+                       isValidEvent(incoming()) &&
+                       incoming().organizerId == existing().organizerId &&
+                       incoming().createdAt == existing().createdAt && (
+                         (existing().organizerId == request.auth.uid &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'dateLabel', 'timeLabel', 'locationLabel', 'updatedAt'])) ||
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['rsvpCount', 'updatedAt']) &&
+                          ((incoming().rsvpCount == existing().rsvpCount + 1 &&
+                            !exists(/databases/$(database)/documents/events/$(eventId)/rsvps/$(request.auth.uid)) &&
+                            existsAfter(/databases/$(database)/documents/events/$(eventId)/rsvps/$(request.auth.uid))) ||
+                           (incoming().rsvpCount == existing().rsvpCount - 1 &&
+                            exists(/databases/$(database)/documents/events/$(eventId)/rsvps/$(request.auth.uid)) &&
+                            !existsAfter(/databases/$(database)/documents/events/$(eventId)/rsvps/$(request.auth.uid)))))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(eventId) && existing().organizerId == request.auth.uid;
+
+      match /rsvps/{userId} {
+        allow get: if isSignedIn() && isValidId(eventId) && isValidId(userId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() &&
+                         isValidId(eventId) &&
+                         isValidId(userId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().targetId == eventId &&
+                         incoming().keys().hasAll(['userId', 'targetId', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'targetId', 'createdAt']) &&
+                         isValidReactionMarker(incoming()) &&
+                         existsAfter(/databases/$(database)/documents/events/$(eventId));
+        allow delete: if isSignedIn() && isValidId(eventId) && isValidId(userId) && request.auth.uid == userId;
+      }
+    }
+
+    match /groups/{groupId} {
+      allow get: if isSignedIn() && isValidId(groupId);
+      allow list: if isSignedIn() && resource.data.visibility == 'NEIGHBORHOOD' && resource.data.neighborhoodId is string;
+
+      allow create: if isSignedIn() &&
+                       isValidId(groupId) &&
+                       incoming().creatorId == request.auth.uid &&
+                       incoming().memberCount >= 1 &&
+                       incoming().keys().hasAll(['creatorId', 'creatorName', 'neighborhoodId', 'neighborhoodName', 'visibility', 'name', 'description', 'category', 'memberCount', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['creatorId', 'creatorName', 'neighborhoodId', 'neighborhoodName', 'visibility', 'name', 'description', 'category', 'memberCount', 'createdAt', 'updatedAt']) &&
+                       isValidGroup(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(groupId) &&
+                       isValidGroup(incoming()) &&
+                       incoming().creatorId == existing().creatorId &&
+                       incoming().createdAt == existing().createdAt && (
+                         (existing().creatorId == request.auth.uid &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'category', 'updatedAt'])) ||
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['memberCount', 'updatedAt']) &&
+                          ((incoming().memberCount == existing().memberCount + 1 &&
+                            !exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)) &&
+                            existsAfter(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid))) ||
+                           (incoming().memberCount == existing().memberCount - 1 &&
+                            exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)) &&
+                            !existsAfter(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid)))))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(groupId) && existing().creatorId == request.auth.uid;
+
+      match /members/{userId} {
+        allow get: if isSignedIn() && isValidId(groupId) && isValidId(userId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() &&
+                         isValidId(groupId) &&
+                         isValidId(userId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().targetId == groupId &&
+                         incoming().keys().hasAll(['userId', 'targetId', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'targetId', 'createdAt']) &&
+                         isValidReactionMarker(incoming()) &&
+                         existsAfter(/databases/$(database)/documents/groups/$(groupId));
+        allow delete: if isSignedIn() && isValidId(groupId) && isValidId(userId) && request.auth.uid == userId;
+      }
+    }
+
+    match /businesses/{businessId} {
+      allow get: if isSignedIn() && isValidId(businessId);
+      allow list: if isSignedIn() && resource.data.visibility == 'NEIGHBORHOOD' && resource.data.neighborhoodId is string;
+
+      allow create: if isSignedIn() &&
+                       isValidId(businessId) &&
+                       incoming().recommenderId == request.auth.uid &&
+                       incoming().favesCount >= 1 &&
+                       incoming().keys().hasAll(['recommenderId', 'recommenderName', 'neighborhoodId', 'neighborhoodName', 'visibility', 'name', 'category', 'summary', 'addressLabel', 'phoneLabel', 'favesCount', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['recommenderId', 'recommenderName', 'neighborhoodId', 'neighborhoodName', 'visibility', 'name', 'category', 'summary', 'addressLabel', 'phoneLabel', 'favesCount', 'createdAt', 'updatedAt']) &&
+                       isValidBusiness(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(businessId) &&
+                       isValidBusiness(incoming()) &&
+                       incoming().recommenderId == existing().recommenderId &&
+                       incoming().createdAt == existing().createdAt && (
+                         (existing().recommenderId == request.auth.uid &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'category', 'summary', 'addressLabel', 'phoneLabel', 'updatedAt'])) ||
+                         (incoming().diff(existing()).affectedKeys().hasOnly(['favesCount', 'updatedAt']) &&
+                          ((incoming().favesCount == existing().favesCount + 1 &&
+                            !exists(/databases/$(database)/documents/businesses/$(businessId)/faves/$(request.auth.uid)) &&
+                            existsAfter(/databases/$(database)/documents/businesses/$(businessId)/faves/$(request.auth.uid))) ||
+                           (incoming().favesCount == existing().favesCount - 1 &&
+                            exists(/databases/$(database)/documents/businesses/$(businessId)/faves/$(request.auth.uid)) &&
+                            !existsAfter(/databases/$(database)/documents/businesses/$(businessId)/faves/$(request.auth.uid)))))
+                       );
+
+      allow delete: if isSignedIn() && isValidId(businessId) && existing().recommenderId == request.auth.uid;
+
+      match /faves/{userId} {
+        allow get: if isSignedIn() && isValidId(businessId) && isValidId(userId) && request.auth.uid == userId;
+        allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+        allow create: if isSignedIn() &&
+                         isValidId(businessId) &&
+                         isValidId(userId) &&
+                         request.auth.uid == userId &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().targetId == businessId &&
+                         incoming().keys().hasAll(['userId', 'targetId', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'targetId', 'createdAt']) &&
+                         isValidReactionMarker(incoming()) &&
+                         existsAfter(/databases/$(database)/documents/businesses/$(businessId));
+        allow delete: if isSignedIn() && isValidId(businessId) && isValidId(userId) && request.auth.uid == userId;
+      }
+    }
+
+    match /conversations/{conversationId} {
+      allow get: if isSignedIn() && isValidId(conversationId) && request.auth.uid in resource.data.participantUids;
+      allow list: if isSignedIn() && request.auth.uid in resource.data.participantUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(conversationId) &&
+                       request.auth.uid in incoming().participantUids &&
+                       incoming().keys().hasAll(['participantUids', 'participantNames', 'subject', 'lastMessageText', 'lastSenderId', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['participantUids', 'participantNames', 'subject', 'lastMessageText', 'lastSenderId', 'createdAt', 'updatedAt']) &&
+                       isValidConversation(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(conversationId) &&
+                       isValidConversation(incoming()) &&
+                       request.auth.uid in existing().participantUids &&
+                       incoming().participantUids == existing().participantUids &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().lastSenderId == request.auth.uid &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['lastMessageText', 'lastSenderId', 'subject', 'updatedAt']);
+
+      match /messages/{messageId} {
+        allow get: if isSignedIn() && isValidId(conversationId) && isValidId(messageId) && request.auth.uid in resource.data.participantUids;
+        allow list: if isSignedIn() && request.auth.uid in resource.data.participantUids;
+        allow create: if isSignedIn() &&
+                         isValidId(conversationId) &&
+                         isValidId(messageId) &&
+                         incoming().senderId == request.auth.uid &&
+                         incoming().conversationId == conversationId &&
+                         request.auth.uid in incoming().participantUids &&
+                         incoming().keys().hasAll(['conversationId', 'senderId', 'senderName', 'participantUids', 'text', 'createdAt']) &&
+                         incoming().keys().hasOnly(['conversationId', 'senderId', 'senderName', 'participantUids', 'text', 'createdAt']) &&
+                         isValidDirectMessage(incoming()) &&
+                         existsAfter(/databases/$(database)/documents/conversations/$(conversationId));
+      }
+    }
+  }
+}
